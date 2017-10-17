@@ -1,0 +1,63 @@
+---
+title: "YouHee Kil"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+This is a map which shows good businesses (stars are greater than four and number of reviews is greater than thirty) in Toronto using leaflet package to allow people to see more detailed information of businesses. For example, I distinguished three top businesses in Toronto, Restaurants, Shopping and Bars, putting icons on the map to let people find good business in Toronto easily. Benefit of using leaflet package for creating mapp is that letting people do zoom in to see the location of the business clearly. 
+
+```{r}
+library(devtools)
+install_github("wch/webshot")
+#install.packages("phantomjs")
+library(htmlwidgets)
+library(webshot)
+library(jsonlite)
+library(dplyr)
+library(ggplot2)
+library(ggmap)
+#install.packages("leaflet")
+library(leaflet)
+setwd("/Users/youheekil/Desktop/140SL - yelp")
+business <- stream_in(file("business.json"), verbose=FALSE)
+business_toronto <- business %>% filter(city=="Toronto")
+
+#Restaurant 
+restaurants <- business_toronto$business_id[grep("Rest+", business_toronto$categories)]
+a<- business_toronto$business_id %in% restaurants
+business_toronto$business[a==TRUE] <- "eat"
+
+#Shopping
+Shopping <- business_toronto$business_id[grep("Shopping", business_toronto$categories)]
+b<- business_toronto$business_id %in% Shopping
+business_toronto$business[b==TRUE] <- "shopping"
+#business_toronto$business
+
+#Nightlife
+Nightlife <- business_toronto$business_id[grep("Nightlife", business_toronto$categories)]
+d<- business_toronto$business_id %in% Nightlife
+business_toronto$business[d==TRUE] <- "nightlife"
+#business_toronto$business
+
+business_toronto2 <- na.omit(business_toronto)
+business_toronto2_good = business_toronto2 %>% filter(stars>4.0 & review_count > 30)
+
+business_toronto2_good <- business_toronto2_good[,c(8,9,17)]
+colnames(business_toronto2_good) <- c("lat", "lng", "type")
+
+
+logos <- iconList(
+ nightlife = makeIcon(iconUrl = "http://icons.iconarchive.com/icons/graphicloads/food-drink/24/drink-2-icon.png", iconWidth =24, iconHeight = 24), 
+ shopping = makeIcon(iconUrl = "http://icons.iconarchive.com/icons/custom-icon-design/pretty-office-11/24/shop-icon.png", iconWidth=24, iconHeight=24), 
+ eat=makeIcon(iconUrl = "http://icons.iconarchive.com/icons/graphicloads/100-flat/24/dinner-icon.png",iconWidth=24, iconHeight=24 )
+ )
+
+m <- leaflet(business_toronto2_good) %>% addTiles('http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png', 
+	attribution='Map tiles by <a href="http://stamen.com">Stamen Design</a>, <a href="http://creativecommons.org/licenses/by/3.0">CC BY 3.0</a> &mdash; Map data &copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>') 
+m2 <- m %>% setView(-79.3832, 43.6532, zoom = 14) %>% addMarkers(icon = ~logos[type])
+
+saveWidget(m2, "temp.html", selfcontained = FALSE)
+webshot("temp.html", file = "Rplot.png",
+        cliprect = "viewport")
+```
